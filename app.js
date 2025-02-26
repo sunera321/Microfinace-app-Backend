@@ -2,6 +2,10 @@ const express = require("express");
 const connectDB = require("./config/db");
 const customerRoutes = require("./routes/customerRoutes");
 const userRoutes = require("./routes/userRoutes");
+const productRoutes = require("./routes/productRouter");
+const branchRoutes = require("./routes/branchRoutes");
+const centerRoutes = require("./routes/centerRoutes");
+
 const cors = require("cors");
 
 const app = express();
@@ -17,6 +21,9 @@ app.use(express.json()); // Parses incoming JSON requests
 // Routes
 app.use("/customers", customerRoutes); // Mount customer routes
 app.use("/users", userRoutes); // Mount user routes
+app.use("/products", productRoutes); // Mount product routes
+app.use("/branches", branchRoutes); // Mount branch routes
+app.use("/centers", centerRoutes); // Mount center routes
 
 // Error handling middleware
 app.use((err, req, res, next) => {

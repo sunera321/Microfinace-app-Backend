@@ -5,6 +5,7 @@ const userRoutes = require("./routes/userRoutes");
 const productRoutes = require("./routes/productRouter");
 const branchRoutes = require("./routes/branchRoutes");
 const centerRoutes = require("./routes/centerRoutes");
+const loanRoutes = require("./routes/loanRoutes")
 
 const cors = require("cors");
 
@@ -24,6 +25,7 @@ app.use("/users", userRoutes); // Mount user routes
 app.use("/products", productRoutes); // Mount product routes
 app.use("/branches", branchRoutes); // Mount branch routes
 app.use("/centers", centerRoutes); // Mount center routes
+app.use("/loan",loanRoutes )
 
 // Error handling middleware
 app.use((err, req, res, next) => {

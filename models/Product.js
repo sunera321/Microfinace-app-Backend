@@ -10,7 +10,9 @@ const productSchema = new mongoose.Schema({
     code: { type: String, required: true },
     interest: { type: Number, required: true },
     terms: { type: Number, required: true },
-    docCharges: { type: Number, required: true }
+    docCharges: { type: Number},
+    Grace_period: { type: Number },
+    CreateDate: { type: Date, default: Date.now }
 });
 
 // Export model

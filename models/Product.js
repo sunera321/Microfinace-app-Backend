@@ -13,6 +13,7 @@ const productSchema = new mongoose.Schema({
     docCharges: { type: Number},
     Grace_period: { type: Number },
     CreateDate: { type: Date, default: Date.now }
+    
 });
 
 // Export model

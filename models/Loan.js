@@ -5,7 +5,7 @@ const loanSchema = new mongoose.Schema({
   customerId: { type: mongoose.Schema.Types.ObjectId, ref: "Customer", required: true },
   productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
   grantedAmount: { type: Number, required: true },
-  grantedDate: { type: Date, required: true, default: Date.now },
+  grantedDate: { type: Date, required: true }, 
   firstDueDate: { type: Date, required: true },
   documentCharges: { type: Number, required: true },
   interestRate: { type: Number, required: true },

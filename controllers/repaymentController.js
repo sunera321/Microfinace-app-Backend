@@ -36,7 +36,10 @@ exports.createRepayment = async (req, res) => {
 
         loan.recovered += amount;
         loan.outstanding = Math.max(0, loan.totalReceivable - loan.recovered);
+        loan.arrearsAmount = Math.max(0, loan.outstanding - (loan.grantedAmount - loan.recovered));
         await loan.save();
+        console.log("Repayment created:", repayment);
+        
 
         // ✅ Log repayment event
         if (typeof EventLog !== "undefined") {

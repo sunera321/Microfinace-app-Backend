@@ -7,6 +7,8 @@ const branchRoutes = require("./routes/branchRoutes");
 const centerRoutes = require("./routes/centerRoutes");
 const loanRoutes = require("./routes/loanRoutes")
 const repaymentRoutes = require("./routes/repaymentRoutes");
+const holidayRoutes = require("./routes/holidayRoutes");
+const interestRoutes = require("./routes/interestRoutes");
 
 const cors = require("cors");
 
@@ -28,6 +30,8 @@ app.use("/branches", branchRoutes); // Mount branch routes
 app.use("/centers", centerRoutes); // Mount center routes
 app.use("/loan",loanRoutes )
 app.use("/repayments", repaymentRoutes);
+app.use("/holidays", holidayRoutes); // Mount holiday routes
+app.use("/interest", interestRoutes); // Mount interest calculation routes
 
 // Error handling middleware
 app.use((err, req, res, next) => {

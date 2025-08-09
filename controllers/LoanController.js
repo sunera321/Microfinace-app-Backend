@@ -1,6 +1,7 @@
 const Loan = require("../models/Loan");
 const Product = require("../models/Product");
 const Customer = require("../models/Customer");
+const Holiday = require("../models/Holiday");
 const multer = require("multer");
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const cloudinary = require("../config/cloudinary");
@@ -24,13 +25,13 @@ exports.uploadLoanDocuments = upload.fields([
   { name: "otherProof", maxCount: 1 },
 ]);
 
-// Helper function to calculate arrears amount
+// Helper function to calculate arrears amount (legacy - without holidays)
 const calculateArrearsAmount = (loan, product) => {
-  const { grantedDate, totalReceivable, recovered, period } = loan;
+  const { firstDueDate, totalReceivable, recovered, period } = loan;
   const { type } = product;
 
   const currentDate = new Date();
-  const loanStartDate = new Date(grantedDate);
+  const loanStartDate = new Date(firstDueDate); // Use firstDueDate instead of grantedDate
 
   // Calculate time difference in days
   const timeDiff = currentDate.getTime() - loanStartDate.getTime();
@@ -76,6 +77,48 @@ const calculateArrearsAmount = (loan, product) => {
   return arrearsAmount;
 };
 
+// Helper function to calculate arrears amount considering holidays (daily products)
+const calculateArrearsAmountWithHolidays = async (loan, product) => {
+  const basic = calculateArrearsAmount(loan, product);
+
+  // Only adjust for daily repayment products
+  if (product?.type?.toLowerCase() !== "daily") {
+    return basic;
+  }
+
+  try {
+    const firstDueDate = new Date(loan.firstDueDate); // Use firstDueDate instead of grantedDate
+    const now = new Date();
+
+    // If current date is before first due date, no arrears yet
+    if (now < firstDueDate) {
+      return 0;
+    }
+
+    // Count holidays for this center and product within the window
+    const holidayCount = await Holiday.countDocuments({
+      centerId: loan.centerId,
+      productId: loan.productId,
+      isActive: true,
+      date: { $gte: firstDueDate, $lte: now },
+    });
+
+    if (holidayCount <= 0) return basic;
+
+    // Recompute expected with business days = daysPassed - holidayCount
+    const totalDays = Math.floor((now.getTime() - firstDueDate.getTime()) / (1000 * 3600 * 24));
+    const businessDays = Math.max(totalDays - holidayCount, 0);
+
+    const installmentAmount = loan.totalReceivable / loan.period;
+    const expectedRecovered = Math.min(businessDays * installmentAmount, loan.totalReceivable);
+    const arrearsAmount = Math.max(expectedRecovered - (loan.recovered || 0), 0);
+    return arrearsAmount;
+  } catch (err) {
+    console.error("Error adjusting arrears for holidays:", err);
+    return basic;
+  }
+};
+
 // Create Loan
 exports.createLoan = async (req, res) => {
   try {
@@ -106,29 +149,20 @@ exports.createLoan = async (req, res) => {
 
     const firstDueDate = new Date(parsedGrantedDate.getTime() + gracePeriod * 24 * 60 * 60 * 1000);
 
-    // Calculate arrears
-    const now = new Date();
-    const daysPassed = Math.floor((now - parsedGrantedDate) / (1000 * 60 * 60 * 24));
-    console.log("📅 Days passed since granted date:", daysPassed);
-    let termsPassed = 0;
-
-    switch (type) {
-      case "daily":
-        termsPassed = daysPassed;
-        break;
-      case "weekly":
-        termsPassed = Math.floor(daysPassed / 7);
-        break;
-      case "monthly":
-        termsPassed = Math.floor(daysPassed / 30);
-        break;
-      default:
-        termsPassed = 0;
-    }
-
-    const expectedRecovered = Math.min(termsPassed * installmentAmount, totalReceivable);
+    // Calculate initial arrears (considering holidays for daily products)
     const recovered = 0; // since it's a new loan
-    const arrearsAmount = Math.max(expectedRecovered - recovered, 0);
+    // Temporary loan shape to reuse helper
+    const tempLoanForArrears = {
+      loanId,
+      grantedDate: parsedGrantedDate,
+      firstDueDate,
+      totalReceivable,
+      period,
+      recovered,
+      centerId: customer.centerId,
+      productId,
+    };
+    const arrearsAmount = await calculateArrearsAmountWithHolidays(tempLoanForArrears, product);
 
     const supportingDocuments = {
       loanApplication: req.files?.loanApplication?.[0]?.path || "",

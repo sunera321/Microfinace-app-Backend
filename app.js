@@ -9,6 +9,8 @@ const loanRoutes = require("./routes/loanRoutes")
 const repaymentRoutes = require("./routes/repaymentRoutes");
 const holidayRoutes = require("./routes/holidayRoutes");
 const interestRoutes = require("./routes/interestRoutes");
+const reportsRoutes = require("./routes/reportsRoutes");
+const loanApprovalRoutes = require("./routes/loanApprovalRoutes");
 
 const cors = require("cors");
 
@@ -32,6 +34,8 @@ app.use("/loan",loanRoutes )
 app.use("/repayments", repaymentRoutes);
 app.use("/holidays", holidayRoutes); // Mount holiday routes
 app.use("/interest", interestRoutes); // Mount interest calculation routes
+app.use("/reports", reportsRoutes); // Mount reports routes
+app.use("/loan-approvals", loanApprovalRoutes); // Mount loan approval routes
 
 // Error handling middleware
 app.use((err, req, res, next) => {

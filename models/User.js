@@ -10,6 +10,15 @@ const userSchema = new mongoose.Schema({
         enum: ['admin', 'user', 'manager'], 
         default: 'user' 
     },
+    firebaseUid: { 
+        type: String, 
+        unique: true, 
+        sparse: true // Allows null values, but enforces uniqueness when not null
+    },
+    isSignupCompleted: { 
+        type: Boolean, 
+        default: false // False until user completes signup
+    },
     isActive: { 
         type: Boolean, 
         default: true 

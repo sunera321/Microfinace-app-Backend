@@ -15,7 +15,7 @@ const loanApprovalRoutes = require("./routes/loanApprovalRoutes");
 const cors = require("cors");
 
 const app = express();
-const PORT = process.env.PORT || 3000; // Use environment variable or default to 3000
+const PORT = 3000; // Use environment variable or default to 3000
 
 // Connect to the database
 connectDB();

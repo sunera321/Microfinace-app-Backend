@@ -1,28 +1,9 @@
-const User = require("../models/User"); // Import the User model
+const UserService = require("../services/userService"); // Import the User service
 
 // Admin creates user profile (Step 1)
 exports.createUserProfile = async (req, res) => {
     try {
-        const { name, email, NIC_no, phone_no, role } = req.body;
-        
-        // Validate required fields
-        if (!name || !email) {
-            return res.status(400).json({ 
-                message: "Name and email are required" 
-            });
-        }
-
-        // Create user profile (without Firebase auth yet)
-        const user = new User({
-            name,
-            email,
-            NIC_no,
-            phone_no,
-            role: role || 'user',
-            isSignupCompleted: false // User hasn't completed signup yet
-        });
-        
-        const savedUser = await user.save();
+        const savedUser = await UserService.createUserProfile(req.body);
         
         res.status(201).json({
             message: "User profile created successfully",
@@ -31,6 +12,9 @@ exports.createUserProfile = async (req, res) => {
         });
         
     } catch (error) {
+        if (error.message.includes("already exists")) {
+            return res.status(400).json({ message: error.message });
+        }
         if (error.code === 11000) {
             // Duplicate email or NIC
             const field = Object.keys(error.keyPattern)[0];
@@ -46,36 +30,18 @@ exports.createUserProfile = async (req, res) => {
 exports.validateEmailForSignup = async (req, res) => {
     try {
         const { email } = req.body;
-        
-        if (!email) {
-            return res.status(400).json({ 
-                message: "Email is required" 
-            });
-        }
-
-        // Check if user profile exists and signup is not completed
-        const user = await User.findOne({ 
-            email: email.toLowerCase(),
-            isSignupCompleted: false 
-        });
-        
-        if (!user) {
-            return res.status(404).json({ 
-                message: "No pending signup found for this email. Contact admin." 
-            });
-        }
+        const userInfo = await UserService.validateEmailForSignup(email);
 
         res.status(200).json({
             message: "Email validated successfully",
-            user: {
-                name: user.name,
-                email: user.email,
-                role: user.role
-            },
+            user: userInfo,
             canProceedToPasswordCreation: true
         });
         
     } catch (error) {
+        if (error.message.includes("No pending signup")) {
+            return res.status(404).json({ message: error.message });
+        }
         res.status(500).json({ message: error.message });
     }
 };
@@ -84,32 +50,7 @@ exports.validateEmailForSignup = async (req, res) => {
 exports.completeUserSignup = async (req, res) => {
     try {
         const { email, firebaseUid } = req.body;
-        
-        if (!email || !firebaseUid) {
-            return res.status(400).json({ 
-                message: "Email and firebaseUid are required" 
-            });
-        }
-
-        // Update user with Firebase UID and mark signup as completed
-        const user = await User.findOneAndUpdate(
-            { 
-                email: email.toLowerCase(),
-                isSignupCompleted: false 
-            },
-            { 
-                firebaseUid: firebaseUid,
-                isSignupCompleted: true,
-                updatedAt: new Date()
-            },
-            { new: true }
-        );
-        
-        if (!user) {
-            return res.status(404).json({ 
-                message: "User not found or signup already completed" 
-            });
-        }
+        const user = await UserService.completeUserSignup(email, firebaseUid);
 
         res.status(200).json({
             message: "Signup completed successfully",
@@ -117,6 +58,9 @@ exports.completeUserSignup = async (req, res) => {
         });
         
     } catch (error) {
+        if (error.message.includes("not found")) {
+            return res.status(404).json({ message: error.message });
+        }
         res.status(400).json({ message: error.message });
     }
 };
@@ -124,49 +68,58 @@ exports.completeUserSignup = async (req, res) => {
 // Create a new user (legacy endpoint)
 exports.createUser = async (req, res) => {
     try {
-        const user = new User(req.body); // Create a new user instance with request data
-        const savedUser = await user.save(); // Save to MongoDB
+        const savedUser = await UserService.createUser(req.body);
         res.status(201).json(savedUser);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 };
+
 // Get all users
 exports.getUsers = async (req, res) => {
     try {
-        const users = await User.find(); // Find all users in the collection
+        const users = await UserService.getAllUsers();
         res.status(200).json(users);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
+
 // Get a user by ID
 exports.getUserById = async (req, res) => {
     try {
-        const user = await User.findById(req.params.id); // Find user by ID
-        if (!user) return res.status(404).json({ message: "User not found" });
+        const user = await UserService.getUserById(req.params.id);
         res.status(200).json(user);
     } catch (error) {
+        if (error.message === "User not found") {
+            return res.status(404).json({ message: error.message });
+        }
         res.status(500).json({ message: error.message });
     }
 };
+
 // Update a user by ID
 exports.updateUser = async (req, res) => {
     try {
-        const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
-        if (!user) return res.status(404).json({ message: "User not found" });
+        const user = await UserService.updateUser(req.params.id, req.body);
         res.status(200).json(user);
     } catch (error) {
+        if (error.message === "User not found") {
+            return res.status(404).json({ message: error.message });
+        }
         res.status(400).json({ message: error.message });
     }
 };
+
 // Delete a user by ID
 exports.deleteUser = async (req, res) => {
     try {
-        const user = await User.findByIdAndDelete(req.params.id);
-        if (!user) return res.status(404).json({ message: "User not found" });
+        await UserService.deleteUser(req.params.id);
         res.status(204).json({ message: "User deleted" });
     } catch (error) {
+        if (error.message === "User not found") {
+            return res.status(404).json({ message: error.message });
+        }
         res.status(500).json({ message: error.message });
     }
 };

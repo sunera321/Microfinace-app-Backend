@@ -68,11 +68,6 @@ const calculateArrearsAmount = (loan, product) => {
   // Calculate arrears - difference between expected recovery and actual recovery
   const arrearsAmount = Math.max(expectedRecovered - (recovered || 0), 0);
 
-  console.log(
-    `📊 Loan ${loan.loanId}: Days passed: ${daysPassed}, Expected: ${expectedRecovered}, Recovered: ${
-      recovered || 0
-    }, Arrears: ${arrearsAmount}`
-  );
 
   return arrearsAmount;
 };
@@ -123,7 +118,6 @@ const calculateArrearsAmountWithHolidays = async (loan, product) => {
 exports.createLoan = async (req, res) => {
   try {
     const { customerId, productId, grantedAmount, grantedDate } = req.body;
-    console.log("📥 grantedDate:", grantedDate);
 
     const parsedGrantedDate = new Date(grantedDate);
     if (isNaN(parsedGrantedDate.getTime())) {
@@ -192,12 +186,11 @@ exports.createLoan = async (req, res) => {
     });
 
     const savedLoan = await loan.save();
-    console.log("✅ Loan saved with grantedDate:", savedLoan.grantedDate.toISOString());
-    console.log("💰 Arrears Amount:", savedLoan.arrearsAmount);
+
 
     res.status(201).json(savedLoan);
   } catch (error) {
-    console.error("❌ Error in createLoan:", error);
+
     res.status(500).json({ message: error.message });
   }
 };
@@ -255,16 +248,15 @@ exports.getLoans = async (req, res) => {
           }
           return loan;
         } catch (error) {
-          console.error(`❌ Error updating arrears for loan ${loan.loanId}:`, error);
+          
           return loan;
         }
       })
     );
 
-    console.log("✅ Fetched loans with updated arrears");
+
     res.status(200).json(loansWithUpdatedArrears);
   } catch (error) {
-    console.error("❌ Error in getLoans:", error);
     res.status(500).json({ message: error.message });
   }
 };

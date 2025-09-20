@@ -27,16 +27,6 @@ exports.createHoliday = async (req, res) => {
     }
 };
 
-        const holiday = new Holiday({
-            name,
-            date: new Date(date),
-            description,
-            centerId,
-            branchId,
-            productId
-        });
-
-        const savedHoliday = await holiday.save();
 /**
  * Get all holidays for a specific center
  * GET /api/holidays/center/:centerId
@@ -134,46 +124,6 @@ exports.updateHoliday = async (req, res) => {
             success: false,
             message: error.message
         });
-    }
-};
-
-        // Check if holiday exists
-        const existingHoliday = await Holiday.findById(req.params.id);
-        if (!existingHoliday) {
-            return res.status(404).json({ message: "Holiday not found" });
-        }
-
-        // If date is being changed, check for conflicts
-        if (date && new Date(date).getTime() !== existingHoliday.date.getTime()) {
-            const conflictHoliday = await Holiday.findOne({
-                centerId: centerId || existingHoliday.centerId,
-                date: new Date(date),
-                isActive: true,
-                _id: { $ne: req.params.id }
-            });
-
-            if (conflictHoliday) {
-                return res.status(400).json({ message: "Holiday already exists for this center and date" });
-            }
-        }
-
-        const updatedHoliday = await Holiday.findByIdAndUpdate(
-            req.params.id,
-            {
-                name,
-                date: date ? new Date(date) : existingHoliday.date,
-                description,
-                centerId,
-                branchId,
-                updatedAt: new Date()
-            },
-            { new: true }
-        ).populate('centerId', 'name')
-         .populate('branchId', 'name');
-
-        res.status(200).json(updatedHoliday);
-    } catch (error) {
-        res.status(400).json({ message: error.message });
     }
 };
 

@@ -64,6 +64,7 @@ exports.getProductById = async (req, res) => {
             success: false,
             message: error.message
         });
+    }
 };
 
 /**
@@ -104,4 +105,3 @@ exports.deleteProduct = async (req, res) => {
         });
     }
 };
-

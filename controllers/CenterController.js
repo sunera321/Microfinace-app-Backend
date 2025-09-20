@@ -1,82 +1,107 @@
-const Center = require('../models/Center');
-const Branch = require('../models/Branch');
+/**
+ * CENTER CONTROLLER
+ * 
+ * HTTP request/response handler for center management operations.
+ * Uses CenterService for business logic and validation.
+ */
 
-// Create a new center
+const CenterService = require('../services/centerService');
+
+/**
+ * Create a new center
+ * POST /api/centers
+ */
 exports.createCenter = async (req, res) => {
     try {
-        const { name, collectDay, branchId } = req.body;
-
-        // Check if the branch exists
-        const branch = await Branch.findById(branchId);
-        if (!branch) return res.status(404).json({ message: "Branch not found" });
-
-        const centerData = {
-            name,
-            collectDay,
-            branch: branchId,
-            createdAt: new Date(),
-            updatedAt: new Date()
-        };
-
-        const center = new Center(centerData);
-        const savedCenter = await center.save();
-        res.status(201).json(savedCenter);
+        const center = await CenterService.createCenter(req.body);
+        res.status(201).json({
+            success: true,
+            data: center,
+            message: 'Center created successfully'
+        });
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        res.status(400).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
-// Get all centers
+/**
+ * Get all centers
+ * GET /api/centers
+ */
 exports.getCenters = async (req, res) => {
     try {
-        const centers = await Center.find().populate('branch', 'name code'); // Populating branch info
-        res.status(200).json(centers);
+        const centers = await CenterService.getAllCenters(req.query);
+        res.status(200).json({
+            success: true,
+            data: centers,
+            message: 'Centers retrieved successfully'
+        });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
-// Get a single center by ID
+/**
+ * Get a single center by ID
+ * GET /api/centers/:id
+ */
 exports.getCenterById = async (req, res) => {
     try {
-        const center = await Center.findById(req.params.id).populate('branch', 'name code');
-        if (!center) return res.status(404).json({ message: "Center not found" });
-        res.status(200).json(center);
+        const center = await CenterService.getCenterById(req.params.id);
+        res.status(200).json({
+            success: true,
+            data: center,
+            message: 'Center retrieved successfully'
+        });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(404).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
-// Update a center by ID
+/**
+ * Update a center by ID
+ * PUT /api/centers/:id
+ */
 exports.updateCenter = async (req, res) => {
     try {
-        const { name, collectDay, branchId } = req.body;
-
-        // Check if the branch exists
-        const branch = await Branch.findById(branchId);
-        if (!branch) return res.status(404).json({ message: "Branch not found" });
-
-        const center = await Center.findByIdAndUpdate(req.params.id, {
-            name,
-            collectDay,
-            branch: branchId,
-            updatedAt: new Date()
-        }, { new: true });
-
-        if (!center) return res.status(404).json({ message: "Center not found" });
-        res.status(200).json(center);
+        const center = await CenterService.updateCenter(req.params.id, req.body);
+        res.status(200).json({
+            success: true,
+            data: center,
+            message: 'Center updated successfully'
+        });
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        res.status(400).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
-// Delete a center by ID
+/**
+ * Delete a center by ID
+ * DELETE /api/centers/:id
+ */
 exports.deleteCenter = async (req, res) => {
     try {
-        const center = await Center.findByIdAndDelete(req.params.id);
-        if (!center) return res.status(404).json({ message: "Center not found" });
-        res.status(204).json({ message: "Center deleted" });
+        await CenterService.deleteCenter(req.params.id);
+        res.status(200).json({
+            success: true,
+            message: 'Center deleted successfully'
+        });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(400).json({
+            success: false,
+            message: error.message
+        });
     }
 };

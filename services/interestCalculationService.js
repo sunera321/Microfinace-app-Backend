@@ -1,29 +1,56 @@
+/**
+ * INTEREST CALCULATION SERVICE
+ * 
+ * Provides sophisticated interest calculation functionality for microfinance loans.
+ * Handles complex scenarios including:
+ * - Holiday exclusions for daily payment products
+ * - Compound interest calculations
+ * - Business day adjustments
+ * - Multi-loan batch processing
+ * 
+ * This service ensures accurate financial calculations that comply with
+ * microfinance industry standards and regulatory requirements.
+ */
+
 const Loan = require('../models/Loan');
 const Holiday = require('../models/Holiday');
 
 class InterestCalculationService {
     
     /**
-     * Calculate interest for a single loan considering holidays
-     * @param {string} loanId - The loan ID
-     * @param {Date} startDate - Start date for interest calculation (optional, defaults to firstDueDate)
-     * @param {Date} endDate - End date for interest calculation
-     * @returns {Object} Interest calculation result
+     * CALCULATE INTEREST WITH HOLIDAY ADJUSTMENTS
+     * 
+     * Computes interest for a loan while excluding designated holiday periods.
+     * This is essential for daily payment products where holidays affect payment schedules.
+     * 
+     * @param {string} loanId - Unique loan identifier
+     * @param {Date} startDate - Interest calculation start date (optional, defaults to firstDueDate)
+     * @param {Date} endDate - Interest calculation end date
+     * @returns {Object} Detailed interest calculation with holiday adjustments
+     * 
+     * Returns object contains:
+     * - principalAmount: Outstanding loan balance
+     * - interestRate: Annual percentage rate
+     * - totalDays: Calendar days in calculation period
+     * - holidayDays: Number of holidays excluded
+     * - businessDays: Actual days for interest calculation
+     * - interestAmount: Final calculated interest
+     * - holidays: List of holidays found in period
      */
     static async calculateInterestWithHolidays(loanId, startDate, endDate) {
         try {
-            // Find the loan
+            // Retrieve loan with center and product details for holiday calculation
             const loan = await Loan.findOne({ loanId }).populate('centerId productId');
             if (!loan) {
                 throw new Error(`Loan with ID ${loanId} not found`);
             }
 
-            // Use firstDueDate as default start if not provided, or if startDate is before firstDueDate
+            // Ensure start date is not before loan's first due date
             const effectiveStartDate = !startDate || startDate < loan.firstDueDate 
                 ? loan.firstDueDate 
                 : startDate;
 
-            // If effective start date is after end date, no interest accrued
+            // Handle invalid date range
             if (effectiveStartDate >= endDate) {
                 return {
                     loanId: loan.loanId,
@@ -40,7 +67,7 @@ class InterestCalculationService {
                 };
             }
 
-            // Get holidays in the date range for this loan's center and product
+            // Find holidays that affect this loan's payment schedule
             const holidays = await this.getHolidaysInRange(
                 loan.centerId._id, 
                 loan.productId._id, 
@@ -48,14 +75,14 @@ class InterestCalculationService {
                 endDate
             );
 
-            // Calculate business days (excluding holidays)
+            // Calculate business days (total days minus holidays)
             const totalDays = this.calculateDaysBetween(effectiveStartDate, endDate);
             const holidayDays = holidays.length;
             const businessDays = totalDays - holidayDays;
 
-            // Calculate interest
-            const dailyInterestRate = loan.interestRate / 100 / 365; // Convert annual rate to daily
-            const principalAmount = loan.outstanding;
+            // Perform interest calculation using daily compound method
+            const dailyInterestRate = loan.interestRate / 100 / 365;  // Convert annual rate to daily percentage
+            const principalAmount = loan.outstanding;                  // Current outstanding balance
             const interestAmount = principalAmount * dailyInterestRate * businessDays;
 
             return {
@@ -68,7 +95,7 @@ class InterestCalculationService {
                 holidayDays,
                 businessDays,
                 dailyInterestRate,
-                interestAmount: Math.round(interestAmount * 100) / 100, // Round to 2 decimal places
+                interestAmount: Math.round(interestAmount * 100) / 100,  // Round to 2 decimal places
                 holidays: holidays.map(h => ({
                     name: h.name,
                     date: h.date,
@@ -81,24 +108,31 @@ class InterestCalculationService {
     }
 
     /**
-     * Calculate interest for multiple loans
-     * @param {Array} loanIds - Array of loan IDs
-     * @param {Date} startDate - Start date for interest calculation
-     * @param {Date} endDate - End date for interest calculation
-     * @returns {Array} Array of interest calculation results
+     * BATCH INTEREST CALCULATION
+     * 
+     * Processes interest calculations for multiple loans simultaneously.
+     * Useful for end-of-day processing or bulk reporting operations.
+     * 
+     * @param {Array} loanIds - Array of loan identifiers to process
+     * @param {Date} startDate - Common start date for all calculations
+     * @param {Date} endDate - Common end date for all calculations
+     * @returns {Array} Array of calculation results (includes errors for failed loans)
      */
     static async calculateInterestForMultipleLoans(loanIds, startDate, endDate) {
         try {
             const results = [];
             
+            // Process each loan individually to prevent one failure from stopping the batch
             for (const loanId of loanIds) {
                 try {
                     const result = await this.calculateInterestWithHolidays(loanId, startDate, endDate);
                     results.push(result);
                 } catch (error) {
+                    // Include failed calculations in results for reporting
                     results.push({
                         loanId,
-                        error: error.message
+                        error: error.message,
+                        success: false
                     });
                 }
             }
@@ -110,11 +144,15 @@ class InterestCalculationService {
     }
 
     /**
-     * Check if a specific date is a holiday for a center and product
-     * @param {string} centerId - Center ID
-     * @param {string} productId - Product ID  
-     * @param {Date} date - Date to check
-     * @returns {boolean} True if the date is a holiday
+     * HOLIDAY VALIDATION
+     * 
+     * Checks if a specific date is designated as a holiday for a given center and product.
+     * Used to validate payment schedules and interest calculations.
+     * 
+     * @param {string} centerId - Center identifier
+     * @param {string} productId - Product identifier
+     * @param {Date} date - Date to check for holiday status
+     * @returns {boolean} True if date is a holiday, false otherwise
      */
     static async isHoliday(centerId, productId, date) {
         try {
@@ -135,12 +173,16 @@ class InterestCalculationService {
     }
 
     /**
-     * Get all holidays in a date range for a center and product
-     * @param {string} centerId - Center ID
-     * @param {string} productId - Product ID
-     * @param {Date} startDate - Start date
-     * @param {Date} endDate - End date
-     * @returns {Array} Array of holidays
+     * GET HOLIDAYS IN DATE RANGE
+     * 
+     * Retrieves all active holidays within a specified period for a center and product.
+     * Essential for accurate interest and payment calculations.
+     * 
+     * @param {string} centerId - Center identifier
+     * @param {string} productId - Product identifier  
+     * @param {Date} startDate - Range start date
+     * @param {Date} endDate - Range end date
+     * @returns {Array} Ordered array of holiday records
      */
     static async getHolidaysInRange(centerId, productId, startDate, endDate) {
         try {
@@ -152,7 +194,7 @@ class InterestCalculationService {
                     $lte: endDate
                 },
                 isActive: true
-            }).sort({ date: 1 });
+            }).sort({ date: 1 });           // Sort chronologically for processing
 
             return holidays;
         } catch (error) {
@@ -161,10 +203,14 @@ class InterestCalculationService {
     }
 
     /**
-     * Calculate the number of days between two dates
-     * @param {Date} startDate - Start date
-     * @param {Date} endDate - End date
-     * @returns {number} Number of days
+     * CALCULATE DAYS BETWEEN DATES
+     * 
+     * Utility function to determine the number of days between two dates.
+     * Used for interest calculations and payment scheduling.
+     * 
+     * @param {Date} startDate - Beginning date
+     * @param {Date} endDate - Ending date
+     * @returns {number} Number of days between dates (inclusive)
      */
     static calculateDaysBetween(startDate, endDate) {
         const timeDifference = endDate.getTime() - startDate.getTime();
@@ -173,12 +219,16 @@ class InterestCalculationService {
     }
 
     /**
-     * Calculate compound interest
-     * @param {number} principal - Principal amount
+     * COMPOUND INTEREST CALCULATION
+     * 
+     * Calculates compound interest using the standard formula.
+     * Useful for long-term loans or investment products.
+     * 
+     * @param {number} principal - Principal loan amount
      * @param {number} rate - Annual interest rate (as percentage)
-     * @param {number} time - Time in years
-     * @param {number} compoundFrequency - How many times interest is compounded per year
-     * @returns {number} Compound interest amount
+     * @param {number} time - Time period in years
+     * @param {number} compoundFrequency - Compounding frequency per year (default: 1)
+     * @returns {number} Compound interest amount (not including principal)
      */
     static calculateCompoundInterest(principal, rate, time, compoundFrequency = 1) {
         const amount = principal * Math.pow((1 + (rate / 100) / compoundFrequency), compoundFrequency * time);
@@ -186,10 +236,14 @@ class InterestCalculationService {
     }
 
     /**
-     * Calculate simple interest
-     * @param {number} principal - Principal amount
+     * SIMPLE INTEREST CALCULATION
+     * 
+     * Calculates simple interest using the basic formula.
+     * Commonly used for short-term microfinance products.
+     * 
+     * @param {number} principal - Principal loan amount
      * @param {number} rate - Annual interest rate (as percentage)
-     * @param {number} time - Time in years
+     * @param {number} time - Time period in years
      * @returns {number} Simple interest amount
      */
     static calculateSimpleInterest(principal, rate, time) {

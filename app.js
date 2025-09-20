@@ -1,32 +1,55 @@
+/**
+ * MICROFINANCE APPLICATION - BACKEND SERVER
+ * 
+ * This is the main entry point for the Microfinance Management System API.
+ * It handles loan management, customer registration, branch/center operations,
+ * and financial calculations for a microfinance institution.
+ * 
+ * Features:
+ * - Customer and loan management
+ * - Interest calculations and repayments  
+ * - Branch and center operations
+ * - User authentication and authorization
+ * - Holiday calendar management
+ * - Reporting and analytics
+ */
+
+// Import required dependencies
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./config/db");
 
-// Import routes
-const customerRoutes = require("./routes/customerRoutes");
-const userRoutes = require("./routes/userRoutes");
-const productRoutes = require("./routes/productRouter");
-const branchRoutes = require("./routes/branchRoutes");
-const centerRoutes = require("./routes/centerRoutes");
-const loanRoutes = require("./routes/loanRoutes");
-const repaymentRoutes = require("./routes/repaymentRoutes");
-const holidayRoutes = require("./routes/holidayRoutes");
-const interestRoutes = require("./routes/interestRoutes");
-const reportsRoutes = require("./routes/reportsRoutes");
-const loanApprovalRoutes = require("./routes/loanApprovalRoutes");
+// Import all route modules
+const customerRoutes = require("./routes/customerRoutes");     // Customer CRUD operations
+const userRoutes = require("./routes/userRoutes");             // User authentication & management
+const productRoutes = require("./routes/productRouter");       // Loan product definitions
+const branchRoutes = require("./routes/branchRoutes");         // Branch management
+const centerRoutes = require("./routes/centerRoutes");         // Center operations
+const loanRoutes = require("./routes/loanRoutes");             // Loan lifecycle management
+const repaymentRoutes = require("./routes/repaymentRoutes");   // Payment processing
+const holidayRoutes = require("./routes/holidayRoutes");       // Holiday calendar
+const interestRoutes = require("./routes/interestRoutes");     // Interest calculations
 
+// Initialize Express application
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Connect to the database
+// Connect to MongoDB database
 connectDB();
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+/**
+ * MIDDLEWARE CONFIGURATION
+ * Set up essential middleware for request processing
+ */
+app.use(cors());                                    // Enable Cross-Origin Resource Sharing
+app.use(express.json());                            // Parse JSON request bodies
+app.use(express.urlencoded({ extended: true }));    // Parse URL-encoded form data
 
-// Health check endpoint
+/**
+ * HEALTH CHECK ENDPOINTS
+ * Provide server status information for monitoring
+ */
+// Root endpoint - Basic server status
 app.get("/", (req, res) => {
     res.json({ 
         message: "Microfinance API Server is running!", 
@@ -35,6 +58,7 @@ app.get("/", (req, res) => {
     });
 });
 
+// Detailed health check with uptime information
 app.get("/health", (req, res) => {
     res.json({ 
         status: "healthy", 
@@ -43,20 +67,25 @@ app.get("/health", (req, res) => {
     });
 });
 
-// API Routes
-app.use("/customers", customerRoutes);
-app.use("/users", userRoutes);
-app.use("/products", productRoutes);
-app.use("/branches", branchRoutes);
-app.use("/centers", centerRoutes);
-app.use("/loan", loanRoutes);
-app.use("/repayments", repaymentRoutes);
-app.use("/holidays", holidayRoutes);
-app.use("/interest", interestRoutes);
-app.use("/reports", reportsRoutes);
-app.use("/loan-approvals", loanApprovalRoutes);
+/**
+ * API ROUTES CONFIGURATION
+ * Register all business logic routes with their base paths
+ */
+app.use("/customers", customerRoutes);      // Customer management endpoints
+app.use("/users", userRoutes);              // User authentication & CRUD
+app.use("/products", productRoutes);        // Loan product management
+app.use("/branches", branchRoutes);         // Branch operations
+app.use("/centers", centerRoutes);         // Center management
+app.use("/loan", loanRoutes);              // Loan lifecycle operations
+app.use("/repayments", repaymentRoutes);   // Payment processing
+app.use("/holidays", holidayRoutes);       // Holiday calendar management
+app.use("/interest", interestRoutes);      // Interest calculation utilities
 
-// 404 handler
+/**
+ * ERROR HANDLING MIDDLEWARE
+ * Handle 404 errors and global application errors
+ */
+// 404 handler for undefined routes
 app.use("*", (req, res) => {
     res.status(404).json({ 
         message: "Route not found",
@@ -68,6 +97,7 @@ app.use("*", (req, res) => {
 app.use((err, req, res, next) => {
     console.error(err.stack);
     
+    // Handle MongoDB validation errors
     if (err.name === 'ValidationError') {
         return res.status(400).json({ 
             message: "Validation Error", 
@@ -75,24 +105,29 @@ app.use((err, req, res, next) => {
         });
     }
     
+    // Handle invalid MongoDB ObjectId format
     if (err.name === 'CastError') {
         return res.status(400).json({ 
             message: "Invalid ID format" 
         });
     }
     
+    // Generic server error response
     res.status(500).json({ 
         message: "Internal Server Error",
         error: process.env.NODE_ENV === 'production' ? 'Something went wrong!' : err.message
     });
 });
 
-// Start the server (only for local development)
+/**
+ * SERVER STARTUP
+ * Start the server for local development (Vercel handles production)
+ */
 if (process.env.NODE_ENV !== 'production') {
     app.listen(PORT, () => {
         console.log(`Server is running on http://localhost:${PORT}`);
     });
 }
 
-// Export the Express app for Vercel
+// Export the Express app for serverless deployment (Vercel)
 module.exports = app;

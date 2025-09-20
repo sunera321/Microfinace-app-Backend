@@ -1,66 +1,107 @@
-const Product = require('../models/Product'); 
+/**
+ * PRODUCT CONTROLLER
+ * 
+ * HTTP request/response handler for loan product management.
+ * Uses ProductService for business logic operations.
+ */
 
+const ProductService = require('../services/productService');
 
-// Create a new product
+/**
+ * Create a new product
+ * POST /api/products
+ */
 exports.createProduct = async (req, res) => {
     try {
-        const productData = {
-            ...req.body,
-            createdAt: new Date(),
-            updatedAt: new Date()
-        };
-        const product = new Product(productData);
-        const savedProduct = await product.save();
-        res.status(201).json(savedProduct);
+        const product = await ProductService.createProduct(req.body);
+        res.status(201).json({
+            success: true,
+            data: product,
+            message: 'Product created successfully'
+        });
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        res.status(400).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
-// Get all products
+/**
+ * Get all products
+ * GET /api/products
+ */
 exports.getProducts = async (req, res) => {
     try {
-        const products = await Product.find();
-        res.status(200).json(products);
+        const products = await ProductService.getAllProducts(req.query);
+        res.status(200).json({
+            success: true,
+            data: products,
+            message: 'Products retrieved successfully'
+        });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 
-// Get a single product by ID
-
+/**
+ * Get a single product by ID
+ * GET /api/products/:id
+ */
 exports.getProductById = async (req, res) => {
     try {
-        const product = await Product.findById(req.params.id);
-        if (!product) return res.status(404).json({ message: "Product not found" });
-        res.status(200).json(product);
+        const product = await ProductService.getProductById(req.params.id);
+        res.status(200).json({
+            success: true,
+            data: product,
+            message: 'Product retrieved successfully'
+        });
     } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-}
+        res.status(404).json({
+            success: false,
+            message: error.message
+        });
+};
 
-// Update a product by ID
-
+/**
+ * Update a product by ID
+ * PUT /api/products/:id
+ */
 exports.updateProduct = async (req, res) => {
     try {
-        const product = await Product.findByIdAndUpdate
-        (req.params.id, req.body, { new: true });
-        if (!product) return res.status(404).json({ message: "Product not found" });
-        res.status(200).json(product);
+        const product = await ProductService.updateProduct(req.params.id, req.body);
+        res.status(200).json({
+            success: true,
+            data: product,
+            message: 'Product updated successfully'
+        });
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        res.status(400).json({
+            success: false,
+            message: error.message
+        });
     }
-}
+};
 
-// Delete a product by ID
-
+/**
+ * Delete a product by ID
+ * DELETE /api/products/:id
+ */
 exports.deleteProduct = async (req, res) => {
     try {
-        const product = await Product.findByIdAndDelete(req.params.id);
-        if (!product) return res.status(404).json({ message: "Product not found" });
-        res.status(204).json({ message: "Product deleted" });
+        await ProductService.deleteProduct(req.params.id);
+        res.status(200).json({
+            success: true,
+            message: 'Product deleted successfully'
+        });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(400).json({
+            success: false,
+            message: error.message
+        });
     }
-}
+};
 

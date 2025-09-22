@@ -55,7 +55,7 @@ exports.submitLoanForApproval = async (req, res) => {
     const period = product.terms;
     const gracePeriod = parseInt(product.Grace_period || 0, 10);
     const documentCharges = product.docCharges;
-    const totalReceivable = amount + (amount * (interestRate / 100));
+    const totalReceivable = amount + (amount * (interestRate / 100))+(amount * (documentCharges / 100));
     const firstDueDate = new Date(parsedGrantedDate.getTime() + gracePeriod * 24 * 60 * 60 * 1000);
 
     // Handle uploaded documents

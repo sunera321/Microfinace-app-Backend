@@ -11,44 +11,74 @@ class LoanService {
      * @returns {number} Arrears amount
      */
     static calculateArrearsAmount(loan, product) {
-        const { firstDueDate, totalReceivable, recovered, period } = loan;
-        const { type } = product;
+        try {
+            const { firstDueDate, totalReceivable, recovered, period } = loan;
+            const { type } = product;
 
-        const currentDate = new Date();
-        const loanStartDate = new Date(firstDueDate);
+            // Input validation to prevent NaN
+            const validTotalReceivable = Number(totalReceivable) || 0;
+            const validRecovered = Number(recovered) || 0;
+            const validPeriod = Number(period) || 1;
 
-        // Calculate time difference in days
-        const timeDiff = currentDate.getTime() - loanStartDate.getTime();
-        const daysPassed = Math.floor(timeDiff / (1000 * 3600 * 24));
+            if (validTotalReceivable <= 0 || validPeriod <= 0) {
+                console.log('Invalid loan data, returning 0 arrears');
+                return 0;
+            }
 
-        // If no days have passed or negative days, no arrears
-        if (daysPassed <= 0) return 0;
+            const currentDate = new Date();
+            const loanStartDate = new Date(firstDueDate);
 
-        let expectedRecovered = 0;
-        const installmentAmount = totalReceivable / period;
+            // Validate dates
+            if (isNaN(loanStartDate.getTime())) {
+                console.log('Invalid firstDueDate, returning 0 arrears');
+                return 0;
+            }
 
-        switch (type?.toLowerCase()) {
-            case "daily":
-                expectedRecovered = Math.min(daysPassed * installmentAmount, totalReceivable);
-                break;
-            case "weekly":
-                const weeksPassed = Math.floor(daysPassed / 7);
-                expectedRecovered = Math.min(weeksPassed * installmentAmount, totalReceivable);
-                break;
-            case "monthly":
-                const monthsPassed = Math.floor(daysPassed / 30);
-                expectedRecovered = Math.min(monthsPassed * installmentAmount, totalReceivable);
-                break;
-            default:
-                expectedRecovered = 0;
+            // Calculate time difference in days
+            const timeDiff = currentDate.getTime() - loanStartDate.getTime();
+            const daysPassed = Math.floor(timeDiff / (1000 * 3600 * 24));
+
+            // If no days have passed or negative days, no arrears
+            if (daysPassed <= 0) return 0;
+
+            let expectedRecovered = 0;
+            const installmentAmount = validTotalReceivable / validPeriod;
+
+            // Validate installment amount
+            if (!isFinite(installmentAmount) || installmentAmount <= 0) {
+                console.log('Invalid installment amount, returning 0 arrears');
+                return 0;
+            }
+
+            switch (type?.toLowerCase()) {
+                case "daily":
+                    expectedRecovered = Math.min(daysPassed * installmentAmount, validTotalReceivable);
+                    break;
+                case "weekly":
+                    const weeksPassed = Math.floor(daysPassed / 7);
+                    expectedRecovered = Math.min(weeksPassed * installmentAmount, validTotalReceivable);
+                    break;
+                case "monthly":
+                    const monthsPassed = Math.floor(daysPassed / 30);
+                    expectedRecovered = Math.min(monthsPassed * installmentAmount, validTotalReceivable);
+                    break;
+                default:
+                    expectedRecovered = 0;
+            }
+
+            // Calculate basic arrears
+            const basicArrears = Math.max(expectedRecovered - validRecovered, 0);
+            
+            // CRITICAL FIX: Arrears cannot exceed outstanding amount
+            const outstanding = validTotalReceivable - validRecovered;
+            const finalArrears = Math.min(basicArrears, Math.max(outstanding, 0));
+
+            // Final validation to ensure no NaN
+            return isFinite(finalArrears) ? finalArrears : 0;
+        } catch (error) {
+            console.error('Error in calculateArrearsAmount:', error);
+            return 0;
         }
-
-        // Calculate basic arrears
-        const basicArrears = Math.max(expectedRecovered - (recovered || 0), 0);
-        
-        // CRITICAL FIX: Arrears cannot exceed outstanding amount
-        const outstanding = totalReceivable - (recovered || 0);
-        return Math.min(basicArrears, Math.max(outstanding, 0));
     }
 
     /**
@@ -134,7 +164,8 @@ class LoanService {
         const period = product.terms;
         const gracePeriod = parseInt(product.Grace_period || 0, 10); // Default to 0 if undefined/null
         const documentCharges = product.docCharges;
-        const totalReceivable = parseFloat(grantedAmount) + (parseFloat(grantedAmount) * (interestRate / 100));
+        const totalReceivable = parseFloat(grantedAmount) + (parseFloat(grantedAmount) * (interestRate / 100))+(parseFloat(grantedAmount) + (documentCharges / 100));
+        console.log('Calculated totalReceivable:', totalReceivable);
         const outstanding = totalReceivable;
         const loanId = "LN" + Date.now();
 
@@ -181,12 +212,43 @@ class LoanService {
      * @returns {Promise<Array>} List of loans
      */
     static async getAllLoans() {
-        return await Loan.find()
-            .populate("customerId", "firstName lastName email NIC_no")
-            .populate("productId", "name type interest terms")
-            .populate("centerId", "name location")
-            .populate("branchId", "name address")
-            .sort({ createdAt: -1 });
+        try {
+            const loans = await Loan.find()
+                .populate("customerId", "firstName lastName email NIC_no")
+                .populate("productId", "name type interest terms")
+                .populate("centerId", "name location")
+                .populate("branchId", "name address")
+                .sort({ createdAt: -1 });
+
+            // Calculate real-time arrears for all loans
+            const loansWithUpdatedArrears = await Promise.all(
+                loans.map(async (loan) => {
+                    const currentArrears = await this.calculateArrearsAmountWithHolidays(loan, loan.productId);
+
+                    const loanObject = loan.toObject();
+                    
+                    // Validate arrears before assignment
+                    const validArrears = isFinite(currentArrears) ? currentArrears : 0;
+                    loanObject.arrearsAmount = validArrears;
+                    loanObject.outstanding = Math.max(0, loan.totalReceivable - (loan.recovered || 0));
+
+                    // Update database if arrears changed and value is valid
+                    if (loan.arrearsAmount !== validArrears && isFinite(validArrears)) {
+                        await Loan.findByIdAndUpdate(loan._id, { 
+                            arrearsAmount: validArrears,
+                            outstanding: loanObject.outstanding
+                        });
+                    }
+
+                    return loanObject;
+                })
+            );
+
+            return loansWithUpdatedArrears;
+        } catch (error) {
+            console.error('Error fetching all loans:', error);
+            throw error;
+        }
     }
 
     /**
@@ -195,16 +257,41 @@ class LoanService {
      * @returns {Promise<Object>} Loan object
      */
     static async getLoanById(loanId) {
-        const loan = await Loan.findById(loanId)
-            .populate("customerId", "firstName lastName email NIC_no")
-            .populate("productId", "name type interest terms")
-            .populate("centerId", "name location")
-            .populate("branchId", "name address");
-        
-        if (!loan) {
-            throw new Error("Loan not found");
+        try {
+            const loan = await Loan.findById(loanId)
+                .populate("customerId", "firstName lastName email NIC_no")
+                .populate("productId", "name type interest terms")
+                .populate("centerId", "name location")
+                .populate("branchId", "name address");
+            
+            if (!loan) {
+                throw new Error("Loan not found");
+            }
+
+            // REAL-TIME ARREARS CALCULATION
+            const currentArrears = await this.calculateArrearsAmountWithHolidays(loan, loan.productId);
+
+            // Update the loan object with real-time calculated arrears
+            const loanObject = loan.toObject();
+            
+            // Validate arrears before assignment
+            const validArrears = isFinite(currentArrears) ? currentArrears : 0;
+            loanObject.arrearsAmount = validArrears;
+            loanObject.outstanding = Math.max(0, loan.totalReceivable - (loan.recovered || 0));
+
+            // Optionally update the database with the new arrears (for consistency)
+            if (loan.arrearsAmount !== validArrears && isFinite(validArrears)) {
+                await Loan.findByIdAndUpdate(loanId, { 
+                    arrearsAmount: validArrears,
+                    outstanding: loanObject.outstanding
+                });
+            }
+
+            return loanObject;
+        } catch (error) {
+            console.error('Error fetching loan by ID:', error);
+            throw error;
         }
-        return loan;
     }
 
     /**

@@ -43,14 +43,14 @@ class CenterService {
 
         // Apply filters if provided
         if (filters.branchId) {
-            query.branchId = filters.branchId;
+            query.branch = filters.branchId;
         }
         if (filters.isActive !== undefined) {
             query.isActive = filters.isActive;
         }
 
         return await Center.find(query)
-            .populate('branchId', 'name address region')
+            .populate('branch', 'name address region')
             .sort({ name: 1 });
     }
 
@@ -61,7 +61,7 @@ class CenterService {
      */
     static async getCenterById(centerId) {
         const center = await Center.findById(centerId)
-            .populate('branchId', 'name address region');
+            .populate('branch', 'name address region');
         
         if (!center) {
             throw new Error("Center not found");
@@ -80,7 +80,7 @@ class CenterService {
         if (updateData.name || updateData.branchId) {
             const existingCenter = await Center.findOne({
                 name: { $regex: new RegExp(`^${updateData.name}$`, 'i') },
-                branchId: updateData.branchId,
+                branch: updateData.branchId,
                 _id: { $ne: centerId }
             });
             
@@ -89,11 +89,19 @@ class CenterService {
             }
         }
 
-        const center = await Center.findByIdAndUpdate(centerId, {
+        // Map branchId to branch field if provided
+        const mappedUpdateData = {
             ...updateData,
             updatedAt: new Date()
-        }, { new: true })
-            .populate('branchId', 'name address region');
+        };
+        
+        if (updateData.branchId) {
+            mappedUpdateData.branch = updateData.branchId;
+            delete mappedUpdateData.branchId;
+        }
+
+        const center = await Center.findByIdAndUpdate(centerId, mappedUpdateData, { new: true })
+            .populate('branch', 'name address region');
         
         if (!center) {
             throw new Error("Center not found");
@@ -128,7 +136,7 @@ class CenterService {
      * @returns {Promise<Array>} List of centers in branch
      */
     static async getCentersByBranch(branchId) {
-        return await Center.find({ branchId, isActive: true })
+        return await Center.find({ branch: branchId, isActive: true })
             .sort({ name: 1 });
     }
 
@@ -138,7 +146,7 @@ class CenterService {
      */
     static async getActiveCenters() {
         return await Center.find({ isActive: true })
-            .populate('branchId', 'name')
+            .populate('branch', 'name')
             .sort({ name: 1 });
     }
 
@@ -157,7 +165,7 @@ class CenterService {
                 { description: searchRegex }
             ]
         })
-            .populate('branchId', 'name')
+            .populate('branch', 'name')
             .sort({ name: 1 });
     }
 
@@ -433,12 +441,12 @@ class CenterService {
     static async getMeetingSchedule(branchId = null) {
         const query = { isActive: true };
         if (branchId) {
-            query.branchId = branchId;
+            query.branch = branchId;
         }
 
         return await Center.find(query)
-            .populate('branchId', 'name')
-            .select('name location meetingDay meetingTime branchId')
+            .populate('branch', 'name')
+            .select('name location meetingDay meetingTime branch')
             .sort({ meetingDay: 1, meetingTime: 1 });
     }
 }

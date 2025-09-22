@@ -8,6 +8,8 @@
 // Note: RepaymentService not yet implemented, using direct model access temporarily
 const Repayment = require("../models/Repayment");
 const Loan = require("../models/Loan");
+const Product = require("../models/Product");
+const LoanService = require("../services/loanService");
 
 /**
  * Get repayments by loan ID
@@ -69,13 +71,23 @@ exports.createRepayment = async (req, res) => {
         // Update loan amounts
         loan.recovered += amount;
         loan.outstanding = Math.max(0, loan.totalReceivable - loan.recovered);
-        loan.arrearsAmount = Math.max(0, loan.outstanding - (loan.grantedAmount - loan.recovered));
+        
+        // Calculate arrears properly using the loan service
+        const product = await Product.findById(loan.productId);
+        if (product) {
+            loan.arrearsAmount = await LoanService.calculateArrearsAmountWithHolidays(loan, product);
+        } else {
+            // Fallback if product not found
+            loan.arrearsAmount = 0;
+        }
+        
         await loan.save();
         console.log("Repayment created:", repayment);
         
         // ✅ Log repayment event (if EventLog is available)
         try {
             const EventLog = require("../models/EventLog");
+            console.log("Logging repayment event");
             await EventLog.create({
                 type: "REPAYMENT",
                 loanId,

@@ -43,11 +43,16 @@ class LoanService {
                 expectedRecovered = 0;
         }
 
-        return Math.max(expectedRecovered - (recovered || 0), 0);
+        // Calculate basic arrears
+        const basicArrears = Math.max(expectedRecovered - (recovered || 0), 0);
+        
+        // CRITICAL FIX: Arrears cannot exceed outstanding amount
+        const outstanding = totalReceivable - (recovered || 0);
+        return Math.min(basicArrears, Math.max(outstanding, 0));
     }
 
     /**
-     * Calculate arrears amount considering holidays (for daily products)
+     * Calculate arrears amount considering holidays
      * @param {Object} loan - Loan object
      * @param {Object} product - Product object
      * @returns {Promise<number>} Arrears amount
@@ -55,38 +60,45 @@ class LoanService {
     static async calculateArrearsAmountWithHolidays(loan, product) {
         const basic = this.calculateArrearsAmount(loan, product);
 
-        // Only adjust for daily repayment products
-        if (product?.type?.toLowerCase() !== "daily") {
-            return basic;
-        }
+        // For daily loans: exclude holidays (customer-friendly)
+        // For weekly/monthly loans: include holidays (strict terms)
+        if (product?.type?.toLowerCase() === "daily") {
+            // Daily loans: exclude holidays from arrears calculation
+            try {
+                const firstDueDate = new Date(loan.firstDueDate);
+                const now = new Date();
 
-        try {
-            const firstDueDate = new Date(loan.firstDueDate);
-            const now = new Date();
+                if (now < firstDueDate) {
+                    return 0;
+                }
 
-            if (now < firstDueDate) {
-                return 0;
+                // Count holidays for this center and product within the window
+                const holidayCount = await Holiday.countDocuments({
+                    centerId: loan.centerId,
+                    productId: loan.productId,
+                    isActive: true, 
+                    date: { $gte: firstDueDate, $lte: now },
+                });
+
+                if (holidayCount <= 0) return basic;
+
+                // Recompute expected with business days = daysPassed - holidayCount
+                const totalDays = Math.floor((now.getTime() - firstDueDate.getTime()) / (1000 * 3600 * 24));
+                const businessDays = Math.max(totalDays - holidayCount, 0);
+
+                const installmentAmount = loan.totalReceivable / loan.period;
+                const expectedRecovered = Math.min(businessDays * installmentAmount, loan.totalReceivable);
+                const basicArrears = Math.max(expectedRecovered - (loan.recovered || 0), 0);
+                
+                // CRITICAL FIX: Arrears cannot exceed outstanding amount
+                const outstanding = loan.totalReceivable - (loan.recovered || 0);
+                return Math.min(basicArrears, Math.max(outstanding, 0));
+            } catch (error) {
+                console.error("Error adjusting arrears for holidays:", error);
+                return basic;
             }
-
-            // Count holidays for this center and product within the window
-            const holidayCount = await Holiday.countDocuments({
-                centerId: loan.centerId,
-                productId: loan.productId,
-                isActive: true,
-                date: { $gte: firstDueDate, $lte: now },
-            });
-
-            if (holidayCount <= 0) return basic;
-
-            // Recompute expected with business days = daysPassed - holidayCount
-            const totalDays = Math.floor((now.getTime() - firstDueDate.getTime()) / (1000 * 3600 * 24));
-            const businessDays = Math.max(totalDays - holidayCount, 0);
-
-            const installmentAmount = loan.totalReceivable / loan.period;
-            const expectedRecovered = Math.min(businessDays * installmentAmount, loan.totalReceivable);
-            return Math.max(expectedRecovered - (loan.recovered || 0), 0);
-        } catch (error) {
-            console.error("Error adjusting arrears for holidays:", error);
+        } else {
+            // Weekly/Monthly loans: calculate arrears including holidays (strict terms)
             return basic;
         }
     }
@@ -120,26 +132,18 @@ class LoanService {
         // Calculate loan details
         const interestRate = product.interest;
         const period = product.terms;
-        const gracePeriod = parseInt(product.Grace_period || 0, 10);
+        const gracePeriod = parseInt(product.Grace_period || 0, 10); // Default to 0 if undefined/null
         const documentCharges = product.docCharges;
         const totalReceivable = parseFloat(grantedAmount) + (parseFloat(grantedAmount) * (interestRate / 100));
         const outstanding = totalReceivable;
         const loanId = "LN" + Date.now();
 
-        const firstDueDate = new Date(parsedGrantedDate.getTime() + gracePeriod * 24 * 60 * 60 * 1000);
+        // Calculate first due date: granted date + grace period days
+        const firstDueDate = new Date(parsedGrantedDate);
+        firstDueDate.setDate(firstDueDate.getDate() + gracePeriod);
 
-        // Calculate initial arrears
-        const tempLoanForArrears = {
-            loanId,
-            grantedDate: parsedGrantedDate,
-            firstDueDate,
-            totalReceivable,
-            period,
-            recovered: 0,
-            centerId: customer.centerId,
-            productId,
-        };
-        const arrearsAmount = await this.calculateArrearsAmountWithHolidays(tempLoanForArrears, product);
+        // For new loans, arrears should be 0 (no payments are due yet)
+        const arrearsAmount = 0;
 
         // Handle supporting documents
         const supportingDocuments = {
@@ -288,7 +292,7 @@ class LoanService {
      * Update loan arrears for all active loans
      * @returns {Promise<number>} Number of loans updated
      */
-    static async updateAllLoanArrears() {
+    static async updateAllLoansArrears() {
         const activeLoans = await Loan.find({ outstanding: { $gt: 0 } }).populate('productId');
         let updatedCount = 0;
 
@@ -301,7 +305,7 @@ class LoanService {
                 }
             }
         }
-
+        console.log(`Updated arrears for ${updatedCount} loans`);
         return updatedCount;
     }
 

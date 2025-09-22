@@ -67,28 +67,38 @@ class InterestCalculationService {
                 };
             }
 
-            // Find holidays that affect this loan's payment schedule
-            const holidays = await this.getHolidaysInRange(
-                loan.centerId._id, 
-                loan.productId._id, 
-                effectiveStartDate, 
-                endDate
-            );
-
-            // Calculate business days (total days minus holidays)
             const totalDays = this.calculateDaysBetween(effectiveStartDate, endDate);
-            const holidayDays = holidays.length;
-            const businessDays = totalDays - holidayDays;
+            const dailyInterestRate = loan.interestRate / 100 / 365;
+            const principalAmount = loan.outstanding;
+            
+            let holidayDays = 0;
+            let businessDays = totalDays;
+            let holidays = [];
 
-            // Perform interest calculation using daily compound method
-            const dailyInterestRate = loan.interestRate / 100 / 365;  // Convert annual rate to daily percentage
-            const principalAmount = loan.outstanding;                  // Current outstanding balance
+            // Only apply holiday adjustments for daily loans
+            if (loan.productId?.type?.toLowerCase() === "daily") {
+                // Find holidays that affect this loan's payment schedule
+                holidays = await this.getHolidaysInRange(
+                    loan.centerId._id, 
+                    loan.productId._id, 
+                    effectiveStartDate, 
+                    endDate
+                );
+                
+                // Calculate business days (total days minus holidays) for daily loans
+                holidayDays = holidays.length;
+                businessDays = totalDays - holidayDays;
+            }
+            // For weekly/monthly loans, use total days (ignore holidays)
+
+            // Perform interest calculation
             const interestAmount = principalAmount * dailyInterestRate * businessDays;
 
             return {
                 loanId: loan.loanId,
                 principalAmount,
                 interestRate: loan.interestRate,
+                productType: loan.productId?.type || 'unknown',
                 startDate: effectiveStartDate,
                 endDate,
                 totalDays,

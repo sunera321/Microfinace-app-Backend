@@ -33,6 +33,9 @@ router.get("/:id", loanController.getLoanById);
 // PUT /loan/:id - Update loan information
 router.put("/:id", loanController.updateLoan);
 
+// PUT /loan/batch/update-arrears - Batch update arrears for all loans
+router.put("/batch/update-arrears", loanController.updateAllLoansArrears);
+
 // DELETE /loan/:id - Remove loan record (use with extreme caution)
 router.delete("/:id", loanController.deleteLoan);
 

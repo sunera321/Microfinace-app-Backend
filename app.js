@@ -26,6 +26,7 @@ const productRoutes = require("./routes/productRouter");       // Loan product d
 const branchRoutes = require("./routes/branchRoutes");         // Branch management
 const centerRoutes = require("./routes/centerRoutes");         // Center operations
 const loanRoutes = require("./routes/loanRoutes");             // Loan lifecycle management
+const loanApprovalRoutes = require("./routes/loanApprovalRoutes"); // Loan approval process
 const repaymentRoutes = require("./routes/repaymentRoutes");   // Payment processing
 const holidayRoutes = require("./routes/holidayRoutes");       // Holiday calendar
 const interestRoutes = require("./routes/interestRoutes");     // Interest calculations
@@ -77,6 +78,7 @@ app.use("/products", productRoutes);        // Loan product management
 app.use("/branches", branchRoutes);         // Branch operations
 app.use("/centers", centerRoutes);         // Center management
 app.use("/loan", loanRoutes);              // Loan lifecycle operations
+app.use("/loan-approvals", loanApprovalRoutes); // Loan approval process
 app.use("/repayments", repaymentRoutes);   // Payment processing
 app.use("/holidays", holidayRoutes);       // Holiday calendar management
 app.use("/interest", interestRoutes);      // Interest calculation utilities

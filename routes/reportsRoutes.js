@@ -14,4 +14,16 @@ router.get("/collections", reportsController.getCollectionReport);
 // Get all reports data (combined)
 router.get("/all", reportsController.getAllReports);
 
+// Get today's collection data
+router.get("/collections/today", reportsController.getTodayCollections);
+
+// Get weekly collection data  
+router.get("/collections/weekly", reportsController.getWeeklyCollections);
+
+// Get monthly collection data
+router.get("/collections/monthly", reportsController.getMonthlyCollections);
+
+// Get collection summary (today + weekly + monthly)
+router.get("/collections/summary", reportsController.getCollectionSummary);
+
 module.exports = router;

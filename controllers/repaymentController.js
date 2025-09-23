@@ -84,7 +84,7 @@ exports.createRepayment = async (req, res) => {
         await loan.save();
         console.log("Repayment created:", repayment);
         
-        // ✅ Log repayment event (if EventLog is available)
+        // Log repayment event (if EventLog is available)
         try {
             const EventLog = require("../models/EventLog");
             console.log("Logging repayment event");

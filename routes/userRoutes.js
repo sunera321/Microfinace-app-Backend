@@ -11,6 +11,7 @@ router.post("/complete-signup", userController.completeUserSignup);      // User
 router.post("/", userController.createUser);
 router.get("/", userController.getUsers);
 router.get("/:id", userController.getUserById);
+router.get("/email/:email", userController.getUserByEmail);
 router.put("/:id", userController.updateUser);
 router.delete("/:id", userController.deleteUser);
 

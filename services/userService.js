@@ -161,6 +161,15 @@ class UserService {
         }
         return user;
     }
+    static async getUserByEmail(email) {
+    
+        const user = await User.findOne({ email: email.toLowerCase() });
+        if (!user) {
+            throw new Error("User not found");
+        }
+        return user;
+    }
+
 
     /**
      * Update user status (activate/deactivate)
@@ -172,6 +181,7 @@ class UserService {
         const user = await User.findByIdAndUpdate(userId, {
             isActive,
             updatedAt: new Date()
+            
         }, { new: true });
         
         if (!user) {

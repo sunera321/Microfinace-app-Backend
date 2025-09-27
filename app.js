@@ -88,7 +88,7 @@ app.use("/reports", reportsRoutes);        // Reports and analytics
 /**
  * ERROR HANDLING MIDDLEWARE
  * Handle 404 errors and global application errors
- */
+*/
 // 404 handler for undefined routes
 app.use("*", (req, res) => {
     res.status(404).json({ 

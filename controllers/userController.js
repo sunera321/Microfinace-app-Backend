@@ -98,6 +98,18 @@ exports.getUserById = async (req, res) => {
     }
 };
 
+exports.getUserByEmail = async (req, res) => {
+    try {
+        const user = await UserService.getUserByEmail(req.params.email);
+        res.status(200).json(user);
+    } catch (error) {
+        if (error.message === "User not found") {
+            return res.status(404).json({ message: error.message });
+        }
+        res.status(500).json({ message: error.message });
+    }
+};
+
 // Update a user by ID
 exports.updateUser = async (req, res) => {
     try {

@@ -6,3 +6,4 @@ router.get("/:loanId", repaymentController.getRepaymentsByLoanId);
 router.post("/", repaymentController.createRepayment);
 
 module.exports = router;
+ 

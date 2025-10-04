@@ -6,12 +6,8 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
-<<<<<<< HEAD
-    "build": "echo 'No build needed for Node.js API - Ready to deploy!'"
-=======
     "build": "echo 'Build completed successfully'",
-    "test": "echo 'No tests specified'"
->>>>>>> parent of 0125443 (Simplify deployment: Remove build/test scripts, use npm ci for faster install)
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "engines": {
     "node": ">=20.0.0",

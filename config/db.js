@@ -1,18 +1,9 @@
-/**
- * DATABASE CONNECTION CONFIGURATION
- * 
- * Establishes connection to MongoDB Atlas cloud database.
- * Handles connection errors and provides feedback for troubleshooting.
- * 
- * IMPORTANT: In production, move connection string to environment variables
- * for better security and configuration management.
- */
 
 const mongoose = require("mongoose");
 
 /**
  * CONNECT TO MONGODB
- * Establishes connection to the cloud database with error handling
+
  * @returns {Promise} MongoDB connection promise
  */
 const connectDB = async () => {
@@ -35,21 +26,21 @@ const connectDB = async () => {
 
 // Handle connection events for better monitoring
 mongoose.connection.on('connected', () => {
-    console.log('🔗 Mongoose connected to MongoDB Atlas');
+    console.log('Mongoose connected to MongoDB Atlas');
 });
 
 mongoose.connection.on('error', (err) => {
-    console.error('🚨 Mongoose connection error:', err);
+    console.error('Mongoose connection error:', err);
 });
 
 mongoose.connection.on('disconnected', () => {
-    console.log('🔌 Mongoose disconnected from MongoDB');
+    console.log('Mongoose disconnected from MongoDB');
 });
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
     await mongoose.connection.close();
-    console.log('🛑 MongoDB connection closed through app termination');
+    console.log('MongoDB connection closed through app termination');
     process.exit(0);
 });
 

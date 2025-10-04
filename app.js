@@ -18,7 +18,7 @@
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./config/db");
-
+require('dotenv').config();
 // Import all route modules
 const customerRoutes = require("./routes/customerRoutes");     // Customer CRUD operations
 const userRoutes = require("./routes/userRoutes");             // User authentication & management
@@ -34,7 +34,7 @@ const reportsRoutes = require("./routes/reportsRoutes");       // Reports and an
 
 // Initialize Express application
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 // Connect to MongoDB database
 connectDB();

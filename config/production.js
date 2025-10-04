@@ -10,7 +10,7 @@ module.exports = {
   cors: {
     origin: [
       'https://yourdomain.com',
-      'https://yourapp.azurewebsites.net'
+      'https://microfinance-backend-api-h4a3f4gza6gagudw.eastus-01.azurewebsites.net/'
     ]
   }
 };

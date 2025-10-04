@@ -6,8 +6,7 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
-    "build": "echo 'No build needed for Node.js API - Ready to deploy!'",
-    "postinstall": "echo 'Dependencies installed successfully - No build required'"
+    "build": "echo 'No build needed for Node.js API - Ready to deploy!'"
   },
   "engines": {
     "node": ">=20.0.0",

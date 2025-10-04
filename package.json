@@ -5,7 +5,8 @@
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "build": "echo 'No build needed for Node.js API - Ready to deploy!'"
   },
   "engines": {
     "node": ">=20.0.0",

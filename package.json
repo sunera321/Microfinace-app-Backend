@@ -6,20 +6,9 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
-    "build": "npm install",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "postinstall": "npm run build"
+    "build": "echo 'Build completed successfully'",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [
-    "microfinance",
-    "api",
-    "express",
-    "mongodb",
-    "loan-management",
-    "azure"
-  ],
-  "author": "University Project",
-  "license": "MIT",
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=9.0.0"

@@ -54,7 +54,7 @@ const corsOptions = {
         const allowedOrigins = [
             'http://localhost:3000',
             'http://localhost:19006',  // Expo development
-            'http://192.168.8.138:3000',  // Your local network
+            'http://172.20.10.10:3000',  // Your local network
             /\.azurewebsites\.net$/,  // Any Azure subdomain
             /\.azurestaticapps\.net$/,  // Azure Static Web Apps
             process.env.FRONTEND_URL  // Dynamic frontend URL

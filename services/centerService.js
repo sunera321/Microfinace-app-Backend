@@ -9,26 +9,34 @@ class CenterService {
      * @returns {Promise<Object>} Created center
      */
     static async createCenter(centerData) {
+        // Normalize input: accept either `branch` or `branchId` from caller
+        const branchValue = centerData.branch || centerData.branchId;
+
         // Validate required fields
-        if (!centerData.name || !centerData.branchId) {
+        if (!centerData.name || !branchValue) {
             throw new Error("Center name and branch ID are required");
         }
 
         // Check if center name already exists in the same branch
         const existingCenter = await Center.findOne({
             name: { $regex: new RegExp(`^${centerData.name}$`, 'i') },
-            branchId: centerData.branchId
+            branch: branchValue
         });
         
         if (existingCenter) {
             throw new Error("Center with this name already exists in this branch");
         }
 
-        const center = new Center({
-            ...centerData,
+        // Build the document using the model's `branch` field
+        const centerDoc = {
+            name: centerData.name,
+            collectDay: centerData.collectDay,
+            branch: branchValue,
             createdAt: new Date(),
             updatedAt: new Date()
-        });
+        };
+
+        const center = new Center(centerDoc);
 
         return await center.save();
     }
@@ -333,7 +341,7 @@ class CenterService {
         }
 
         // Branch ID validation
-        if (!centerData.branchId) {
+        if (!centerData.branch && !centerData.branchId) {
             errors.push("Branch ID is required");
         }
 

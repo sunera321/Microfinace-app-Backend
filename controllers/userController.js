@@ -135,3 +135,22 @@ exports.deleteUser = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// Resend invitation email to user
+exports.resendInvitationEmail = async (req, res) => {
+    try {
+        const result = await UserService.resendInvitationEmail(req.params.id);
+        res.status(200).json({
+            message: "Invitation email sent successfully",
+            result: result
+        });
+    } catch (error) {
+        if (error.message === "User not found") {
+            return res.status(404).json({ message: error.message });
+        }
+        if (error.message.includes("already completed signup")) {
+            return res.status(400).json({ message: error.message });
+        }
+        res.status(500).json({ message: error.message });
+    }
+};

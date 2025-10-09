@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const EmailService = require("./emailService");
 
 class UserService {
     /**
@@ -25,6 +26,22 @@ class UserService {
         });
         
         const savedUser = await user.save();
+
+        // Send invitation email
+        try {
+            const emailService = new EmailService();
+            await emailService.sendInvitationEmail({
+                name: savedUser.name,
+                email: savedUser.email,
+                role: savedUser.role
+            });
+            console.log(`Invitation email sent to ${savedUser.email}`);
+        } catch (emailError) {
+            console.error('Failed to send invitation email:', emailError.message);
+            // Note: We don't throw the error here to avoid failing user creation
+            // The user is still created even if email fails
+        }
+
         return savedUser;
     }
 

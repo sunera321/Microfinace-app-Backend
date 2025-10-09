@@ -206,6 +206,36 @@ class UserService {
         }
         return user;
     }
+
+    /**
+     * Resend invitation email to user
+     * @param {string} userId - User ID
+     * @returns {Promise<Object>} Email send result
+     */
+    static async resendInvitationEmail(userId) {
+        // Find the user
+        const user = await User.findById(userId);
+        
+        if (!user) {
+            throw new Error("User not found");
+        }
+
+        // Check if user has already completed signup
+        if (user.isSignupCompleted) {
+            throw new Error("User has already completed signup");
+        }
+
+        // Send invitation email
+        const emailService = new EmailService();
+        const result = await emailService.sendInvitationEmail({
+            name: user.name,
+            email: user.email,
+            role: user.role
+        });
+
+        console.log(`Invitation email resent to ${user.email}`);
+        return result;
+    }
 }
 
 module.exports = UserService;

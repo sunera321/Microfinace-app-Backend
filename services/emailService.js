@@ -2,20 +2,20 @@ const nodemailer = require('nodemailer');
 require('dotenv').config();
 
 class EmailService {
-    constructor(testMode = false) {
-        this.testMode = testMode;
-
-        // Create transporter using environment variables
-        this.transporter = nodemailer.createTransport({
-            service: process.env.EMAIL_SERVICE || 'gmail',
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASSWORD, // Must be Gmail App Password (not your real password)
-            },
-            secure: true, // Use TLS
-            port: 465,
-        });
-    }
+    constructor() {
+            // Create transporter using environment variables
+            this.transporter = nodemailer.createTransport({
+                service: process.env.EMAIL_SERVICE || 'gmail',
+                auth: {
+                    user: process.env.EMAIL_USER || 'sudarakakm2024@gmail.com',
+                    pass: process.env.EMAIL_PASSWORD || 'LoanMeta@2025' // This should be an App Password for Gmail
+                },
+                // Additional Gmail-specific settings
+                secure: true, // Use TLS
+                port: 465
+            });
+        }
+    
 
     /**
      * Send invitation email to new user
@@ -27,21 +27,21 @@ class EmailService {
      */
     async sendInvitationEmail(userDetails) {
         const { name, email, role } = userDetails;
-
+        
         // Get current date
         const currentDate = new Date().toLocaleDateString('en-US', {
             weekday: 'long',
             year: 'numeric',
             month: 'long',
-            day: 'numeric',
+            day: 'numeric'
         });
 
-        // App download links
+        // App download links (you can customize these)
         const downloadLinks = {
-            android:
-                process.env.ANDROID_APP_LINK ||
-                'https://play.google.com/store/apps/details?id=com.yourcompany.microfinance',
+            android: process.env.ANDROID_APP_LINK || 'https://play.google.com/store/apps/details?id=com.yourcompany.microfinance',
+          
         };
+
         const emailTemplate = `
 <!DOCTYPE html>
 <html>

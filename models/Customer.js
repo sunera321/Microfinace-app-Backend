@@ -72,8 +72,7 @@ const customerSchema = new mongoose.Schema({
 });
 
 // Create indexes for better query performance
-customerSchema.index({ email: 1 });
-customerSchema.index({ NIC_no: 1 });
+// Note: email and NIC_no already have unique: true, so no need to create separate indexes
 customerSchema.index({ centerId: 1 });
 customerSchema.index({ branchId: 1 });
 

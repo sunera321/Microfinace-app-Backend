@@ -118,7 +118,7 @@ const loanSchema = new mongoose.Schema({
 });
 
 // Create indexes for better query performance
-loanSchema.index({ loanId: 1 });
+// Note: loanId already has unique: true, so no need to create separate index
 loanSchema.index({ customerId: 1 });
 loanSchema.index({ productId: 1 });
 loanSchema.index({ centerId: 1 });

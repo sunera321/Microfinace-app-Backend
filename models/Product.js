@@ -70,7 +70,7 @@ const productSchema = new mongoose.Schema({
 });
 
 // Create indexes for better query performance
-productSchema.index({ code: 1 });
+// Note: code already has unique: true, so no need to create separate index
 productSchema.index({ type: 1 });
 productSchema.index({ name: 1 });
 

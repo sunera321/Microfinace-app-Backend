@@ -9,11 +9,8 @@ const mongoose = require("mongoose");
 const connectDB = async () => {
     try {
         // Connect to MongoDB Atlas cloud database
-        await mongoose.connect("mongodb+srv://konara2021:root@micro-finace-new.fkgle.mongodb.net/?retryWrites=true&w=majority&appName=micro-finace-new", {
-            useNewUrlParser: true,      // Use new URL parser for MongoDB
-            useUnifiedTopology: true,   // Use new topology engine
-        });
-        
+        await mongoose.connect("mongodb+srv://konara2021:root@micro-finace-new.fkgle.mongodb.net/?retryWrites=true&w=majority&appName=micro-finace-new");
+        //mongodb+srv://konara2021:root@micro-finace-new.fkgle.mongodb.net/?retryWrites=true&w=majority&appName=micro-finace-new
         console.log("MongoDB connected successfully.");
         console.log(`Connected to database: ${mongoose.connection.name}`);
         

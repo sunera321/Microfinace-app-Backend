@@ -53,6 +53,9 @@ const customerSchema = new mongoose.Schema({
         type: Date, 
         required: false 
     },
+    // Additional demographic fields used by the frontend
+    gender: { type: String, enum: ['Male', 'Female', 'Other'], default: null },
+    maritalStatus: { type: String, enum: ['Single', 'Married', 'Divorced', 'Widowed'], default: null },
     
     // Organizational Relationships
     centerId: { 
@@ -65,6 +68,14 @@ const customerSchema = new mongoose.Schema({
         ref: "Branch", 
         required: true        // Customer must belong to a branch
     },
+
+    // Employment / Income
+    occupation: { type: String, trim: true, default: '' },
+    employer: { type: String, trim: true, default: '' },
+    monthlyIncome: { type: Number, default: 0 },
+
+    // Household
+    dependents: { type: Number, default: 0 },
     
     // Audit Fields
     createdAt: { type: Date, default: Date.now },

@@ -217,23 +217,60 @@ process.on('SIGTERM', () => {
 });
 
 /**
- * SERVER STARTUP - AZURE FIX 8: CRITICAL FIX
- * Azure App Service requires the server to ALWAYS start, regardless of NODE_ENV
+ * SERVER STARTUP - AZURE FIX 8: Robust startup with fallbacks and helpful error handling
  */
-app.listen(PORT, () => {
-    console.log(`Microfinance API Server started successfully!`);
-    console.log(`nvironment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`Port: ${PORT}`);
-    console.log(`Started at: ${new Date().toISOString()}`);
-    
-    // Log Azure-specific information if available
-    if (process.env.WEBSITE_SITE_NAME) {
-        console.log(` Azure App Service: ${process.env.WEBSITE_SITE_NAME}`);
-        console.log(`Azure URL: https://${process.env.WEBSITE_SITE_NAME}.azurewebsites.net`);
-    } else {
-        console.log(`Local development server: http://localhost:${PORT}`);
-    }
-});
+const preferredPorts = [Number(process.env.PORT) || 5000, 5000, 3000];
+let currentAttempt = 0;
+
+function startServer() {
+    const port = preferredPorts[currentAttempt] || 5000;
+    const server = app.listen(port, () => {
+        console.log(`Microfinance API Server started successfully!`);
+        console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+        console.log(`Port: ${port}`);
+        console.log(`Started at: ${new Date().toISOString()}`);
+
+        if (process.env.WEBSITE_SITE_NAME) {
+            console.log(` Azure App Service: ${process.env.WEBSITE_SITE_NAME}`);
+            console.log(`Azure URL: https://${process.env.WEBSITE_SITE_NAME}.azurewebsites.net`);
+        } else {
+            console.log(`Local development server: http://localhost:${port}`);
+        }
+    });
+
+    server.on('error', (err) => {
+        if (err && err.code) {
+            if (err.code === 'EACCES') {
+                console.error(`Permission denied binding to port ${port} (EACCES).`);
+                console.error('Try running with elevated privileges or choose a different PORT in your .env');
+            } else if (err.code === 'EADDRINUSE') {
+                console.error(`Port ${port} is already in use (EADDRINUSE).`);
+            } else {
+                console.error('Server error during listen:', err);
+            }
+
+            // Try next fallback port if available
+            currentAttempt += 1;
+            if (currentAttempt < preferredPorts.length) {
+                console.log(`Attempting fallback port ${preferredPorts[currentAttempt]}...`);
+                setTimeout(startServer, 200);
+                return;
+            }
+
+            console.error('All fallback ports exhausted. Server failed to start.');
+            console.error('On Windows you can run: netstat -ano | findstr :<port>  (replace <port>) and then tasklist /FI "PID eq <pid>"');
+            process.exit(1);
+        } else {
+            console.error('Unknown server error', err);
+            process.exit(1);
+        }
+    });
+
+    // keep reference to server if needed later
+    return server;
+}
+
+startServer();
 
 // Export the Express app for Azure App Service
 module.exports = app;

@@ -17,7 +17,23 @@ const Customer = require("../models/Customer");
  */
 exports.createCustomer = async (req, res) => {
     try {
-        const { firstName, lastName, email, phone, address, NIC_no, dateOfBirth, centerId, branchId } = req.body;
+        const { 
+            firstName, 
+            lastName, 
+            email, 
+            phone, 
+            address, 
+            NIC_no, 
+            dateOfBirth, 
+            centerId, 
+            branchId,
+            gender,
+            maritalStatus,
+            occupation,
+            employer,
+            monthlyIncome,
+            dependents
+        } = req.body;
 
         const customer = new Customer({
             firstName,
@@ -29,6 +45,12 @@ exports.createCustomer = async (req, res) => {
             dateOfBirth,
             centerId,
             branchId,
+            gender,
+            maritalStatus,
+            occupation,
+            employer,
+            monthlyIncome: monthlyIncome ? Number(monthlyIncome) : 0,
+            dependents: dependents ? Number(dependents) : 0,
             createdAt: new Date(),
             updatedAt: new Date()
         });
@@ -84,6 +106,17 @@ exports.getCustomerById = async (req, res) => {
  */
 exports.updateCustomer = async (req, res) => {
     try {
+        // Update updatedAt timestamp
+        req.body.updatedAt = new Date();
+        
+        // Ensure numeric fields are properly converted
+        if (req.body.monthlyIncome !== undefined) {
+            req.body.monthlyIncome = Number(req.body.monthlyIncome) || 0;
+        }
+        if (req.body.dependents !== undefined) {
+            req.body.dependents = Number(req.body.dependents) || 0;
+        }
+
         const updatedCustomer = await Customer.findByIdAndUpdate(req.params.id, req.body, { new: true }).populate("centerId branchId");
         if (!updatedCustomer) return res.status(404).json({ message: "Customer not found" });
         res.status(200).json(updatedCustomer);

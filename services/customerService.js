@@ -7,11 +7,36 @@ class CustomerService {
      * @returns {Promise<Object>} Created customer
      */
     static async createCustomer(customerData) {
-        const { firstName, lastName, email, phone, address, NIC_no, dateOfBirth, centerId, branchId } = customerData;
+        const { 
+            firstName, 
+            lastName, 
+            email, 
+            phone, 
+            address, 
+            NIC_no, 
+            dateOfBirth, 
+            centerId, 
+            branchId,
+            gender,
+            maritalStatus,
+            occupation,
+            employer,
+            monthlyIncome,
+            dependents
+        } = customerData;
 
         // Validate required fields
         if (!firstName || !lastName || !email || !NIC_no || !centerId || !branchId) {
             throw new Error("First name, last name, email, NIC number, center ID, and branch ID are required");
+        }
+
+        // Validate numeric fields
+        if (monthlyIncome !== null && monthlyIncome !== undefined && isNaN(parseFloat(monthlyIncome))) {
+            throw new Error("Monthly income must be a valid number");
+        }
+
+        if (dependents !== null && dependents !== undefined && (isNaN(parseInt(dependents)) || parseInt(dependents) < 0)) {
+            throw new Error("Number of dependents must be a valid non-negative integer");
         }
 
         const customer = new Customer({
@@ -24,6 +49,12 @@ class CustomerService {
             dateOfBirth,
             centerId,
             branchId,
+            gender,
+            maritalStatus,
+            occupation,
+            employer,
+            monthlyIncome: monthlyIncome ? parseFloat(monthlyIncome) : null,
+            dependents: dependents !== null && dependents !== undefined ? parseInt(dependents) : null,
             createdAt: new Date(),
             updatedAt: new Date()
         });
@@ -65,6 +96,26 @@ class CustomerService {
      * @returns {Promise<Object>} Updated customer
      */
     static async updateCustomer(customerId, updateData) {
+        // Validate and process numeric fields if they are being updated
+        if (updateData.monthlyIncome !== undefined && updateData.monthlyIncome !== null) {
+            if (isNaN(parseFloat(updateData.monthlyIncome))) {
+                throw new Error("Monthly income must be a valid number");
+            }
+            updateData.monthlyIncome = parseFloat(updateData.monthlyIncome);
+        }
+
+        if (updateData.dependents !== undefined && updateData.dependents !== null) {
+            if (isNaN(parseInt(updateData.dependents)) || parseInt(updateData.dependents) < 0) {
+                throw new Error("Number of dependents must be a valid non-negative integer");
+            }
+            updateData.dependents = parseInt(updateData.dependents);
+        }
+
+        // Normalize email if provided
+        if (updateData.email) {
+            updateData.email = updateData.email.toLowerCase();
+        }
+
         const customer = await Customer.findByIdAndUpdate(customerId, {
             ...updateData,
             updatedAt: new Date()
@@ -116,7 +167,7 @@ class CustomerService {
     }
 
     /**
-     * Search customers by name or NIC
+     * Search customers by multiple fields
      * @param {string} searchTerm - Search term
      * @returns {Promise<Array>} List of matching customers
      */
@@ -128,7 +179,14 @@ class CustomerService {
                 { firstName: searchRegex },
                 { lastName: searchRegex },
                 { NIC_no: searchRegex },
-                { email: searchRegex }
+                { email: searchRegex },
+                { gender: searchRegex },
+                { maritalStatus: searchRegex },
+                { occupation: searchRegex },
+                { employer: searchRegex },
+                { 'address.street': searchRegex },
+                { 'address.city': searchRegex },
+                { 'address.province': searchRegex }
             ]
         })
             .populate("centerId", "name location")
@@ -208,11 +266,120 @@ class CustomerService {
             }
         ]);
 
+        // Gender distribution
+        const genderDistribution = await Customer.aggregate([
+            {
+                $group: {
+                    _id: "$gender",
+                    count: { $sum: 1 }
+                }
+            },
+            {
+                $project: {
+                    gender: "$_id",
+                    count: 1,
+                    _id: 0
+                }
+            }
+        ]);
+
+        // Marital status distribution
+        const maritalStatusDistribution = await Customer.aggregate([
+            {
+                $group: {
+                    _id: "$maritalStatus",
+                    count: { $sum: 1 }
+                }
+            },
+            {
+                $project: {
+                    maritalStatus: "$_id",
+                    count: 1,
+                    _id: 0
+                }
+            }
+        ]);
+
+        // Average monthly income
+        const incomeStats = await Customer.aggregate([
+            {
+                $match: {
+                    monthlyIncome: { $ne: null, $gt: 0 }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    averageIncome: { $avg: "$monthlyIncome" },
+                    maxIncome: { $max: "$monthlyIncome" },
+                    minIncome: { $min: "$monthlyIncome" },
+                    totalCustomersWithIncome: { $sum: 1 }
+                }
+            }
+        ]);
+
         return {
             totalCustomers,
             recentCustomers,
-            customersByBranch
+            customersByBranch,
+            genderDistribution,
+            maritalStatusDistribution,
+            incomeStats: incomeStats[0] || {
+                averageIncome: 0,
+                maxIncome: 0,
+                minIncome: 0,
+                totalCustomersWithIncome: 0
+            }
         };
+    }
+
+    /**
+     * Get customers by income range
+     * @param {number} minIncome - Minimum income
+     * @param {number} maxIncome - Maximum income
+     * @returns {Promise<Array>} List of customers in income range
+     */
+    static async getCustomersByIncomeRange(minIncome, maxIncome) {
+        const query = {
+            monthlyIncome: {
+                $gte: minIncome,
+                $lte: maxIncome,
+                $ne: null
+            }
+        };
+
+        return await Customer.find(query)
+            .populate("centerId", "name location")
+            .populate("branchId", "name address")
+            .sort({ monthlyIncome: -1 });
+    }
+
+    /**
+     * Get customers by occupation
+     * @param {string} occupation - Occupation
+     * @returns {Promise<Array>} List of customers with specified occupation
+     */
+    static async getCustomersByOccupation(occupation) {
+        const occupationRegex = new RegExp(occupation, 'i');
+        
+        return await Customer.find({ occupation: occupationRegex })
+            .populate("centerId", "name location")
+            .populate("branchId", "name address")
+            .sort({ lastName: 1, firstName: 1 });
+    }
+
+    /**
+     * Get customers by employer
+     * @param {string} employer - Employer name
+     * @returns {Promise<Array>} List of customers with specified employer
+     */
+    static async getCustomersByEmployer(employer) {
+        const employerRegex = new RegExp(employer, 'i');
+        
+        return await Customer.find({ employer: employerRegex })
+            .populate("centerId", "name location")
+            .populate("branchId", "name address")
+            .sort({ lastName: 1, firstName: 1 });
     }
 }
 

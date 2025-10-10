@@ -13,7 +13,8 @@ class LoanService {
     static calculateArrearsAmount(loan, product) {
         try {
             const { firstDueDate, totalReceivable, recovered, period } = loan;
-            const { type } = product;
+            // product may be null if the product was removed or not populated; guard against that
+            const type = product && product.type ? product.type : null;
 
             // Input validation to prevent NaN
             const validTotalReceivable = Number(totalReceivable) || 0;
